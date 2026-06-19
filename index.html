@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Discord 書式トレーナー</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #202225;
+      --panel: #2b2d31;
+      --panel-2: #313338;
+      --line: #3f4147;
+      --text: #dbdee1;
+      --muted: #949ba4;
+      --accent: #5865f2;
+      --code: #1e1f22;
+      --success: #3ba55d;
+      font-family: "Segoe UI", "Yu Gothic UI", Meiryo, system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    button, textarea { font: inherit; }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(320px, 1fr) minmax(300px, 430px);
+      min-height: 100vh;
+    }
+
+    .editor-pane, .side-pane { min-width: 0; }
+
+    .editor-pane {
+      display: flex;
+      flex-direction: column;
+      background: var(--panel-2);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 58px;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .icon-button, .toggle-button, .sample-button {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #383a40;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .icon-button {
+      width: 34px;
+      height: 34px;
+      font-weight: 800;
+    }
+
+    .toggle-button {
+      padding: 8px 11px;
+      font-weight: 700;
+    }
+
+    .icon-button:hover, .toggle-button:hover, .sample-button:hover {
+      border-color: #5c5f66;
+      background: #42454d;
+    }
+
+    .toggle-button.active {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+
+    textarea {
+      flex: 1;
+      width: 100%;
+      resize: none;
+      border: 0;
+      outline: 0;
+      padding: 24px;
+      background: transparent;
+      color: var(--text);
+      line-height: 1.62;
+      font-size: 16px;
+      tab-size: 2;
+    }
+
+    textarea::placeholder { color: #777e88; }
+
+    .statusbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 18px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      background: var(--panel);
+    }
+
+    .side-pane {
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .tabs {
+      display: flex;
+      padding: 10px;
+      gap: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .tab {
+      flex: 1;
+      padding: 9px 10px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .tab.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .tab-panel {
+      display: none;
+      min-height: 0;
+      overflow: auto;
+      padding: 16px;
+    }
+
+    .tab-panel.active {
+      display: block;
+      flex: 1;
+    }
+
+    .preview-shell {
+      border-radius: 8px;
+      background: var(--panel-2);
+      overflow: hidden;
+      border: 1px solid var(--line);
+    }
+
+    .preview-header {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .message {
+      display: grid;
+      grid-template-columns: 42px 1fr;
+      gap: 12px;
+      padding: 16px 14px 18px;
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #5865f2, #57f287);
+    }
+
+    .message-meta {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .name {
+      color: #f2f3f5;
+      font-weight: 700;
+    }
+
+    .time {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .discord-preview {
+      min-height: 180px;
+      overflow-wrap: anywhere;
+      line-height: 1.48;
+      white-space: normal;
+    }
+
+    .discord-preview p { margin: 0 0 8px; }
+    .discord-preview p:last-child { margin-bottom: 0; }
+
+    .discord-preview code {
+      padding: 2px 4px;
+      border-radius: 4px;
+      background: var(--code);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.92em;
+    }
+
+    .discord-preview pre {
+      margin: 8px 0;
+      padding: 12px;
+      border-radius: 6px;
+      background: var(--code);
+      overflow: auto;
+    }
+
+    .discord-preview pre code {
+      padding: 0;
+      background: transparent;
+      display: block;
+    }
+
+    .discord-preview blockquote {
+      margin: 7px 0;
+      padding: 0 0 0 10px;
+      border-left: 4px solid #4e5058;
+      color: #c9cdd3;
+    }
+
+    .discord-preview h1, .discord-preview h2, .discord-preview h3 {
+      margin: 10px 0 6px;
+      color: #f2f3f5;
+      line-height: 1.22;
+    }
+
+    .discord-preview h1 { font-size: 24px; }
+    .discord-preview h2 { font-size: 20px; }
+    .discord-preview h3 { font-size: 17px; }
+
+    .discord-preview ul, .discord-preview ol {
+      margin: 6px 0 8px 22px;
+      padding: 0;
+    }
+
+    .spoiler {
+      border-radius: 3px;
+      background: #111214;
+      color: transparent;
+      padding: 0 3px;
+      transition: color 120ms ease;
+    }
+
+    .spoiler:hover { color: var(--text); }
+
+    .format-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .format-item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-2);
+      padding: 12px;
+    }
+
+    .format-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 7px;
+      font-weight: 700;
+    }
+
+    .syntax {
+      display: inline-block;
+      margin-bottom: 8px;
+      padding: 3px 6px;
+      border-radius: 4px;
+      background: var(--code);
+      color: #f2f3f5;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+    }
+
+    .sample-button {
+      padding: 6px 9px;
+      color: #fff;
+      font-size: 12px;
+    }
+
+    .hint {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .toast {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      transform: translateY(18px);
+      opacity: 0;
+      pointer-events: none;
+      padding: 10px 13px;
+      border-radius: 6px;
+      background: var(--success);
+      color: #fff;
+      transition: opacity 160ms ease, transform 160ms ease;
+      box-shadow: 0 8px 26px rgba(0, 0, 0, 0.25);
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    @media (max-width: 860px) {
+      .app { grid-template-columns: 1fr; }
+      .side-pane {
+        border-left: 0;
+        border-top: 1px solid var(--line);
+        max-height: 48vh;
+      }
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      textarea { min-height: 50vh; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="editor-pane" aria-label="入力エリア">
+      <header class="topbar">
+        <h1>Discord 書式トレーナー</h1>
+        <div class="toolbar" aria-label="書式ツールバー">
+          <button class="icon-button" data-left="**" data-right="**" title="太字">B</button>
+          <button class="icon-button" data-left="*" data-right="*" title="斜体"><i>I</i></button>
+          <button class="icon-button" data-left="__" data-right="__" title="下線"><u>U</u></button>
+          <button class="icon-button" data-left="~~" data-right="~~" title="取り消し線"><s>S</s></button>
+          <button class="icon-button" data-left="||" data-right="||" title="ネタバレ">||</button>
+          <button class="icon-button" data-left="`" data-right="`" title="インラインコード">&lt;/&gt;</button>
+          <button class="toggle-button active" id="previewToggle" type="button">プレビュー</button>
+        </div>
+      </header>
+
+      <textarea id="editor" spellcheck="false" aria-label="Discordメッセージ入力"># 書式の練習
+こんにちは、**太字** と *斜体* を試しています。
+__下線__、~~取り消し線~~、||ネタバレ|| も使えます。
+
+&gt; 引用はこんな感じです。
+
+- 箇条書き
+- `コード` も表示できます
+
+```js
+console.log("Discord!");
+```</textarea>
+
+      <footer class="statusbar">
+        <span id="charCount">0 文字</span>
+        <span>入力すると右側にすぐ反映されます</span>
+      </footer>
+    </section>
+
+    <aside class="side-pane" id="sidePane" aria-label="プレビューと書式一覧">
+      <nav class="tabs" aria-label="サイドパネル">
+        <button class="tab active" data-tab="preview" type="button">プレビュー</button>
+        <button class="tab" data-tab="formats" type="button">書式一覧</button>
+      </nav>
+
+      <section class="tab-panel active" id="previewPanel" aria-label="プレビュー">
+        <div class="preview-shell">
+          <div class="preview-header">Discord風プレビュー</div>
+          <article class="message">
+            <div class="avatar" aria-hidden="true"></div>
+            <div>
+              <div class="message-meta">
+                <span class="name">あなた</span>
+                <span class="time">今日 13:37</span>
+              </div>
+              <div id="preview" class="discord-preview"></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="tab-panel" id="formatsPanel" aria-label="書式一覧">
+        <p class="hint">使いたい書式の「挿入」を押すと、カーソル位置にサンプルを入れられます。</p>
+        <div class="format-grid" id="formatGrid"></div>
+      </section>
+    </aside>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite">挿入しました</div>
+
+  <script>
+    const editor = document.querySelector("#editor");
+    const preview = document.querySelector("#preview");
+    const charCount = document.querySelector("#charCount");
+    const previewToggle = document.querySelector("#previewToggle");
+    const sidePane = document.querySelector("#sidePane");
+    const formatGrid = document.querySelector("#formatGrid");
+    const toast = document.querySelector("#toast");
+
+    const formats = [
+      { name: "太字", syntax: "**テキスト**", sample: "**大事な言葉**" },
+      { name: "斜体", syntax: "*テキスト*", sample: "*少し強調*" },
+      { name: "下線", syntax: "__テキスト__", sample: "__下線つき__" },
+      { name: "取り消し線", syntax: "~~テキスト~~", sample: "~~古い内容~~" },
+      { name: "ネタバレ", syntax: "||テキスト||", sample: "||秘密の答え||" },
+      { name: "インラインコード", syntax: "`コード`", sample: "`/help`" },
+      { name: "コードブロック", syntax: "```言語\\nコード\\n```", sample: "```js\\nconsole.log(\"Hi\");\\n```" },
+      { name: "引用", syntax: "> テキスト", sample: "> 引用したい文章" },
+      { name: "見出し", syntax: "# 見出し", sample: "# 大きな見出し" },
+      { name: "箇条書き", syntax: "- 項目", sample: "- ひとつめ\\n- ふたつめ" },
+      { name: "番号付きリスト", syntax: "1. 項目", sample: "1. 手順ひとつめ\\n2. 手順ふたつめ" },
+      { name: "リンク表示", syntax: "[名前](URL)", sample: "[Discord](https://discord.com)" }
+    ];
+
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function inlineFormat(text) {
+      return escapeHtml(text)
+        .replace(/`([^`\n]+)`/g, "<code>$1</code>")
+        .replace(/\|\|(.+?)\|\|/g, "<span class=\"spoiler\">$1</span>")
+        .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/__(.+?)__/g, "<u>$1</u>")
+        .replace(/~~(.+?)~~/g, "<s>$1</s>")
+        .replace(/(^|[^\*])\*([^*\n]+)\*/g, "$1<em>$2</em>")
+        .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, "<a href=\"$2\" target=\"_blank\" rel=\"noreferrer\">$1</a>");
+    }
+
+    function renderBlock(lines, startIndex) {
+      const line = lines[startIndex];
+      const trimmed = line.trim();
+
+      if (trimmed === "") return { html: "", next: startIndex + 1 };
+
+      if (trimmed.startsWith("```")) {
+        const codeLines = [];
+        let index = startIndex + 1;
+        while (index < lines.length && !lines[index].trim().startsWith("```")) {
+          codeLines.push(escapeHtml(lines[index]));
+          index += 1;
+        }
+        return { html: `<pre><code>${codeLines.join("\\n")}</code></pre>`, next: index < lines.length ? index + 1 : index };
+      }
+
+      const heading = line.match(/^(#{1,3})\s+(.+)$/);
+      if (heading) {
+        const level = heading[1].length;
+        return { html: `<h${level}>${inlineFormat(heading[2])}</h${level}>`, next: startIndex + 1 };
+      }
+
+      if (/^>\s?/.test(line)) {
+        const quoteLines = [];
+        let index = startIndex;
+        while (index < lines.length && /^>\s?/.test(lines[index])) {
+          quoteLines.push(lines[index].replace(/^>\s?/, ""));
+          index += 1;
+        }
+        return { html: `<blockquote>${quoteLines.map(inlineFormat).join("<br>")}</blockquote>`, next: index };
+      }
+
+      if (/^[-*]\s+/.test(line)) {
+        const items = [];
+        let index = startIndex;
+        while (index < lines.length && /^[-*]\s+/.test(lines[index])) {
+          items.push(`<li>${inlineFormat(lines[index].replace(/^[-*]\s+/, ""))}</li>`);
+          index += 1;
+        }
+        return { html: `<ul>${items.join("")}</ul>`, next: index };
+      }
+
+      if (/^\d+\.\s+/.test(line)) {
+        const items = [];
+        let index = startIndex;
+        while (index < lines.length && /^\d+\.\s+/.test(lines[index])) {
+          items.push(`<li>${inlineFormat(lines[index].replace(/^\d+\.\s+/, ""))}</li>`);
+          index += 1;
+        }
+        return { html: `<ol>${items.join("")}</ol>`, next: index };
+      }
+
+      const paragraph = [];
+      let index = startIndex;
+      while (
+        index < lines.length &&
+        lines[index].trim() !== "" &&
+        !lines[index].trim().startsWith("```") &&
+        !/^(#{1,3})\s+/.test(lines[index]) &&
+        !/^>\s?/.test(lines[index]) &&
+        !/^[-*]\s+/.test(lines[index]) &&
+        !/^\d+\.\s+/.test(lines[index])
+      ) {
+        paragraph.push(lines[index]);
+        index += 1;
+      }
+      return { html: `<p>${paragraph.map(inlineFormat).join("<br>")}</p>`, next: index };
+    }
+
+    function renderDiscord(input) {
+      const lines = input.replace(/\r\n/g, "\n").split("\n");
+      const output = [];
+      let index = 0;
+      while (index < lines.length) {
+        const block = renderBlock(lines, index);
+        if (block.html) output.push(block.html);
+        index = block.next;
+      }
+      return output.join("");
+    }
+
+    function update() {
+      preview.innerHTML = renderDiscord(editor.value) || "<p style=\"color: var(--muted);\">ここにプレビューが表示されます。</p>";
+      charCount.textContent = `${editor.value.length.toLocaleString("ja-JP")} 文字`;
+    }
+
+    function insertText(text) {
+      const start = editor.selectionStart;
+      const end = editor.selectionEnd;
+      const before = editor.value.slice(0, start);
+      const after = editor.value.slice(end);
+      const spacer = before && !before.endsWith("\n") ? "\n" : "";
+      editor.value = `${before}${spacer}${text}${after}`;
+      const cursor = start + spacer.length + text.length;
+      editor.focus();
+      editor.setSelectionRange(cursor, cursor);
+      update();
+      showToast();
+    }
+
+    function wrapSelection(left, right) {
+      const start = editor.selectionStart;
+      const end = editor.selectionEnd;
+      const selected = editor.value.slice(start, end) || "テキスト";
+      editor.setRangeText(`${left}${selected}${right}`, start, end, "select");
+      update();
+      editor.focus();
+    }
+
+    function showToast() {
+      toast.classList.add("show");
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => toast.classList.remove("show"), 1100);
+    }
+
+    document.querySelectorAll(".icon-button[data-left]").forEach((button) => {
+      button.addEventListener("click", () => wrapSelection(button.dataset.left, button.dataset.right));
+    });
+
+    document.querySelectorAll(".tab").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach((item) => item.classList.toggle("active", item === tab));
+        document.querySelectorAll(".tab-panel").forEach((panel) => {
+          panel.classList.toggle("active", panel.id === `${tab.dataset.tab}Panel`);
+        });
+      });
+    });
+
+    previewToggle.addEventListener("click", () => {
+      const hidden = sidePane.style.display === "none";
+      sidePane.style.display = hidden ? "" : "none";
+      previewToggle.classList.toggle("active", hidden);
+    });
+
+    formatGrid.innerHTML = formats.map((item) => `
+      <article class="format-item">
+        <div class="format-title">
+          <span>${item.name}</span>
+          <button class="sample-button" type="button" data-sample="${encodeURIComponent(item.sample)}">挿入</button>
+        </div>
+        <code class="syntax">${escapeHtml(item.syntax)}</code>
+        <div>${renderDiscord(item.sample)}</div>
+      </article>
+    `).join("");
+
+    formatGrid.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-sample]");
+      if (button) insertText(decodeURIComponent(button.dataset.sample));
+    });
+
+    editor.addEventListener("input", update);
+    update();
+  </script>
+</body>
+</html>
